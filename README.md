@@ -20,15 +20,15 @@ Este proyecto scrapea automáticamente los precios de supermercados argentinos p
 ⚠️ **En desarrollo activo** - El proyecto está en fase alpha pero es funcional.
 
 ### Supermercados soportados:
-- ✅ **Carrefour** (13 secciones)
-- ✅ **Disco** (12 secciones)
+- ✅ **Carrefour**
+- ✅ **Disco**
 - 🔜 Día, Coto, Jumbo (planeados)
 
 ## 💻 Instalación
 
 ```bash
-git clone https://github.com/tu-usuario/comparador-precios-ar.git
-cd comparador-precios-ar
+git clone https://github.com/usergnico/CuidaElMango.git
+cd CuidaElMango
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -44,7 +44,7 @@ python run.py  # Menú interactivo
 ## 📁 Estructura
 
 ```
-comparador-precios-ar/
+CuidaElMango/
 ├── carrefour-scraper.py
 ├── disco-scraper.py
 ├── compare_cart.py
@@ -57,10 +57,6 @@ comparador-precios-ar/
 ## 🤝 Contribuir
 
 ¡Contribuciones bienvenidas! Ver [Issues](https://github.com/tu-usuario/comparador-precios-ar/issues).
-
-## ⚖️ Disclaimer
-
-Solo para uso educativo. Los precios son aproximados. Verificá siempre en el sitio oficial.
 
 ---
 
