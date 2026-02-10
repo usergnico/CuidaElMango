@@ -10,14 +10,14 @@ from datetime import datetime
 # ============================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
-os.makedirs(DATA_DIR, exist_ok=True)  # Crear carpeta data si no existe
+os.makedirs(DATA_DIR, exist_ok=True)
 DB_PATH = os.path.join(DATA_DIR, 'carrefour.db')
 
 # TODAS las secciones disponibles
 SECCIONES = {
     # Alimentos
     'almacen': 'https://www.carrefour.com.ar/almacen',
-    'desayuno y merienda': 'https://www.carrefour.com.ar/desayuno-y-merienda',
+    'desayuno': 'https://www.carrefour.com.ar/desayuno-y-merienda',
     'bebidas': 'https://www.carrefour.com.ar/bebidas',
     'lacteos': 'https://www.carrefour.com.ar/lacteos-y-productos-frescos',
     'carnes': 'https://www.carrefour.com.ar/carnes-y-pescados',
@@ -33,7 +33,6 @@ SECCIONES = {
     'electronica': 'https://www.carrefour.com.ar/electro-y-tecnologia',
     'mascotas': 'https://www.carrefour.com.ar/mascotas',
     'bebe': 'https://www.carrefour.com.ar/mundo-bebe',
-    
 }
 
 PROMOTION_KEYWORDS = ['OFF', '%', '2DO', 'PROMO', 'DESCUENTO', 'OFERTA']
@@ -94,7 +93,19 @@ def guardar_producto(nombre, precio, promo, categoria, url=None):
         # Limpiar precio
         if isinstance(precio, str):
             precio = precio.replace('$', '').replace('.', '').replace(',', '.').replace('\xa0', '').strip()
-        precio = float(precio)
+        
+        # Validar que el precio no esté vacío
+        if not precio or precio == '':
+            return  # Saltar este producto
+        
+        try:
+            precio = float(precio)
+        except (ValueError, TypeError):
+            return  # Saltar si no se puede convertir
+        
+        # Validar que el precio sea positivo
+        if precio <= 0:
+            return
         
         # Verificar si el producto existe
         cursor.execute(
@@ -185,6 +196,10 @@ def extraer_datos_producto(item, categoria):
             return None
         precio = limpiar_texto(precio_elem.text)
         
+        # Validar que el precio no esté vacío
+        if not precio or precio == '':
+            return None
+        
         # Promoción
         promo = extraer_promocion(item)
         
@@ -267,21 +282,85 @@ def scrapear_seccion(browser, categoria, url_base, max_paginas=None):
     return total_productos
 
 
+def elegir_secciones():
+    """
+    Permite al usuario elegir qué secciones scrapear.
+    Retorna lista de secciones seleccionadas.
+    """
+    print("\n" + "="*60)
+    print("🎯 SELECCIÓN DE SECCIONES")
+    print("="*60)
+    print("\n¿Qué secciones querés scrapear?\n")
+    
+    # Agrupar por categoría
+    alimentos = ['almacen', 'desayuno', 'bebidas', 'lacteos', 'carnes', 'frutas', 'congelados', 'panaderia']
+    no_alimentos = ['limpieza', 'perfumeria', 'hogar', 'bazar', 'electronica', 'mascotas', 'bebe']
+    
+    print("🍕 ALIMENTOS:")
+    for i, seccion in enumerate(alimentos, 1):
+        print(f"  {i}) {seccion}")
+    
+    print("\n🧹 NO ALIMENTACIÓN:")
+    for i, seccion in enumerate(no_alimentos, len(alimentos) + 1):
+        print(f"  {i}) {seccion}")
+    
+    print(f"\n  {len(SECCIONES) + 1}) TODAS las secciones")
+    print(f"  {len(SECCIONES) + 2}) Solo ALIMENTOS")
+    print(f"  {len(SECCIONES) + 3}) Solo NO ALIMENTACIÓN")
+    
+    print("\n" + "="*60)
+    print("Ingresá los números separados por comas (ej: 1,3,5)")
+    print("O presioná Enter para scrapear TODAS")
+    print("="*60)
+    
+    seleccion = input("\nTu selección: ").strip()
+    
+    if not seleccion:
+        return list(SECCIONES.keys())
+    
+    try:
+        numeros = [int(n.strip()) for n in seleccion.split(',')]
+        
+        # Opciones especiales
+        if len(SECCIONES) + 1 in numeros:
+            return list(SECCIONES.keys())
+        if len(SECCIONES) + 2 in numeros:
+            return alimentos
+        if len(SECCIONES) + 3 in numeros:
+            return no_alimentos
+        
+        # Selección manual
+        todas_secciones = alimentos + no_alimentos
+        secciones_elegidas = []
+        for num in numeros:
+            if 1 <= num <= len(todas_secciones):
+                secciones_elegidas.append(todas_secciones[num - 1])
+        
+        return secciones_elegidas if secciones_elegidas else list(SECCIONES.keys())
+        
+    except ValueError:
+        print("\n⚠️  Entrada inválida. Scrapeando TODAS las secciones.")
+        return list(SECCIONES.keys())
+
+
 # ============================================
 # FLUJO PRINCIPAL
 # ============================================
-def run(secciones=None, max_paginas_por_seccion=None):
+def run(secciones=None, max_paginas_por_seccion=None, modo_interactivo=True):
     """
     Ejecuta el scraper de Carrefour.
     
     Args:
-        secciones: Lista de secciones a scrapear. Si es None, scrapea todas.
+        secciones: Lista de secciones a scrapear. Si es None, pregunta al usuario.
         max_paginas_por_seccion: Límite de páginas por sección (útil para testing).
+        modo_interactivo: Si True, permite elegir secciones interactivamente.
     """
     inicializar_db()
     
     # Determinar qué secciones scrapear
-    if secciones is None:
+    if secciones is None and modo_interactivo:
+        secciones = elegir_secciones()
+    elif secciones is None:
         secciones = list(SECCIONES.keys())
     else:
         # Validar que las secciones existan
@@ -294,12 +373,19 @@ def run(secciones=None, max_paginas_por_seccion=None):
     print(f"🚀 Iniciando scraper de Carrefour...")
     print(f"💾 Base de datos: {DB_PATH}\n")
     
+    input("⏸️  Presioná Enter para comenzar (o Ctrl+C para cancelar)...")
+    
     with sync_playwright() as p:
-        browser = p.firefox.launch(headless=False)
+        browser = p.firefox.launch(headless=True)
         
         total_general = 0
-        for seccion in secciones:
-            url = SECCIONES[seccion]
+        for i, seccion in enumerate(secciones, 1):
+            url = SECCIONES.get(seccion)
+            if not url:
+                print(f"⚠️  Sección '{seccion}' no encontrada. Saltando...")
+                continue
+            
+            print(f"\n[{i}/{len(secciones)}] Procesando: {seccion}")
             total = scrapear_seccion(browser, seccion, url, max_paginas_por_seccion)
             total_general += total
         
@@ -314,8 +400,11 @@ def run(secciones=None, max_paginas_por_seccion=None):
 
 
 if __name__ == "__main__":
-    # Para testing: scrapear solo almacén (2 páginas)
-    # run(secciones=['almacen'], max_paginas_por_seccion=2)
+    # Modo interactivo: permite elegir secciones
+    run(modo_interactivo=True)
     
-    # Para producción: scrapear TODAS las secciones
-    run()
+    # Para testing: scrapear solo almacén (2 páginas)
+    # run(secciones=['almacen'], max_paginas_por_seccion=2, modo_interactivo=False)
+    
+    # Para automatizar: scrapear secciones específicas
+    # run(secciones=['bebidas', 'lacteos'], modo_interactivo=False)
