@@ -21,7 +21,7 @@ Este proyecto scrapea automáticamente los precios de supermercados argentinos p
 
 ## 🤝 Contribuir
 
-¡Contribuciones bienvenidas! Ver [Issues](https://github.com/tu-usuario/comparador-precios-ar/issues).
+¡Contribuciones bienvenidas! Ver [Issues](https://github.com/usergnico/CuidaElMango/issues).
 
 ---
 
