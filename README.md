@@ -1,6 +1,6 @@
 # 🛒 Comparador de Precios Argentina
 
-> Herramienta open-source para comparar precios entre supermercados argentinos y ahorrar en tus compras.
+> Herramienta open-source para comparar precios entre supermercados argentinos.
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -10,7 +10,7 @@
 
 Este proyecto scrapea automáticamente los precios de supermercados argentinos para que puedas:
 
-- ✅ **Comparar tu carrito** entre Carrefour, Disco y otros supermercados
+- ✅ **Comparar tu carrito** entre supermercados
 - 📊 **Ver histórico de precios** y detectar tendencias
 - 🏷️ **Identificar promociones** y mejores ofertas
 - 💰 **Ahorrar dinero** comprando en el super más barato
@@ -18,41 +18,6 @@ Este proyecto scrapea automáticamente los precios de supermercados argentinos p
 ## 🚧 Estado del Proyecto
 
 ⚠️ **En desarrollo activo** - El proyecto está en fase alpha pero es funcional.
-
-### Supermercados soportados:
-- ✅ **Carrefour**
-- ✅ **Disco**
-- 🔜 Día, Coto, Jumbo (planeados)
-
-## 💻 Instalación
-
-```bash
-git clone https://github.com/usergnico/CuidaElMango.git
-cd CuidaElMango
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-playwright install firefox
-```
-
-## 🚀 Uso
-
-```bash
-python run.py  # Menú interactivo
-```
-
-## 📁 Estructura
-
-```
-CuidaElMango/
-├── carrefour-scraper.py
-├── disco-scraper.py
-├── compare_cart.py
-├── run.py
-├── config.py
-├── data/          # Bases de datos
-└── docs/          # Documentación
-```
 
 ## 🤝 Contribuir
 

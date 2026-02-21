@@ -1,0 +1,20 @@
+# FastAPI y servidor
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+
+# Supabase (versión que funciona)
+supabase==1.2.0
+httpx==0.24.1
+httpcore==0.17.3
+
+# Utilidades
+python-dotenv==1.0.1
+pydantic==2.6.0
+
+# Scraping
+playwright==1.41.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# Fechas
+python-dateutil==2.8.2

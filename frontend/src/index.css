@@ -1,0 +1,25 @@
+/* index.css corregido */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Esto permite que el navegador maneje el modo oscuro/claro base */
+  color-scheme: light dark;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  /* Eliminamos display: flex y place-items para que App.css tome el control */
+}
+
+#root {
+  width: 100%; /* Asegura que React ocupe todo el ancho */
+}
