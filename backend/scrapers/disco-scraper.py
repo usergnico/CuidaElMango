@@ -1,10 +1,10 @@
 import sys
 import os
 
-# Agregar path del backend
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import get_supabase_admin
+from utils import extraer_atributos_producto
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
@@ -12,25 +12,35 @@ import re
 
 supabase = get_supabase_admin()
 
-# Secciones de Disco
+# ============================================
+# SECCIONES COMPLETAS DE DISCO
+# ============================================
 SECCIONES = {
+    # Alimentación
     'almacen': 'https://www.disco.com.ar/almacen',
     'bebidas': 'https://www.disco.com.ar/bebidas',
     'lacteos': 'https://www.disco.com.ar/lacteos',
     'carnes': 'https://www.disco.com.ar/carnes',
-    'quesos': 'https://www.disco.com.ar/quesos-y-fiambres',
     'frutas': 'https://www.disco.com.ar/frutas-y-verduras',
+    'quesos': 'https://www.disco.com.ar/quesos-y-fiambres',
     'congelados': 'https://www.disco.com.ar/congelados',
-    'panaderia': 'https://www.disco.com.ar/panaderia-y-pasteleria',
+    'panaderia': 'https://www.disco.com.ar/panaderia-y-reposteria',
     'pastas': 'https://www.disco.com.ar/pastas-frescas',
+    'rotiseria': 'https://www.disco.com.ar/rotiseria',
+    
+    # Limpieza y cuidado
     'limpieza': 'https://www.disco.com.ar/limpieza',
     'perfumeria': 'https://www.disco.com.ar/perfumeria',
-    'bazar': 'https://www.disco.com.ar/hogar-y-textil',
-    'mascotas': 'https://www.disco.com.ar/mascotas',
+    
+    # Bebés y mascotas
     'bebe': 'https://www.disco.com.ar/mundo-bebe',
+    'mascotas': 'https://www.disco.com.ar/mascotas',
+    
+    # Hogar y otros
+    'hogar': 'https://www.disco.com.ar/hogar-y-textil',
+    'electro': 'https://www.disco.com.ar/electro',
+    'tiempo_libre': 'https://www.disco.com.ar/tiempo-libre',
 }
-
-PROMOTION_KEYWORDS = ['OFF', '%', '2DO', 'PROMO', 'DESCUENTO', 'OFERTA']
 
 def limpiar_texto(texto):
     if not texto:
@@ -38,6 +48,7 @@ def limpiar_texto(texto):
     return re.sub(r'\s+', ' ', texto).strip()
 
 def extraer_promocion(item):
+    PROMOTION_KEYWORDS = ['OFF', '%', '2DO', 'PROMO', 'DESCUENTO', 'OFERTA']
     for tag in item.find_all(['span', 'div']):
         texto = limpiar_texto(tag.text)
         if len(texto) > 50:
@@ -56,6 +67,7 @@ def extraer_imagen_url(item):
         return None
 
 def guardar_producto(nombre, precio, promo, categoria, url, imagen_url):
+    """Guarda producto con atributos extraídos"""
     try:
         if isinstance(precio, str):
             precio = precio.replace('$', '').replace('.', '').replace(',', '.').replace('\xa0', '').strip()
@@ -67,9 +79,18 @@ def guardar_producto(nombre, precio, promo, categoria, url, imagen_url):
         if precio_float <= 0:
             return
         
+        # EXTRAER ATRIBUTOS
+        atributos = extraer_atributos_producto(nombre)
+        
         data = {
             "nombre": nombre,
-            "tienda": "Disco",  # ← CAMBIO: Disco en vez de Carrefour
+            "nombre_limpio": atributos['nombre_limpio'],
+            "marca": atributos['marca'],
+            "peso": atributos['peso'],
+            "peso_unidad": atributos['peso_unidad'],
+            "cantidad_unidades": atributos['cantidad_unidades'],
+            "variante": atributos['variante'],
+            "tienda": "Disco",
             "categoria": categoria,
             "precio": precio_float,
             "promo": promo,
@@ -78,15 +99,14 @@ def guardar_producto(nombre, precio, promo, categoria, url, imagen_url):
             "ultima_actualizacion": datetime.now().isoformat()
         }
         
-        supabase.table("productos").upsert(
-            data,
-            on_conflict="nombre,tienda"
-        ).execute()
+        supabase.table("productos").upsert(data, on_conflict="nombre,tienda").execute()
         
-        print(f"✅ {nombre} - ${precio_float}")
+        marca_str = f"[{atributos['marca']}]" if atributos['marca'] else ""
+        peso_str = f"{atributos['peso']}{atributos['peso_unidad']}" if atributos['peso'] else ""
+        print(f"✅ {marca_str} {nombre[:40]}... {peso_str} - ${precio_float}")
         
     except Exception as e:
-        print(f"❌ Error guardando {nombre}: {e}")
+        print(f"❌ Error: {e}")
 
 def extraer_datos_producto(item, categoria):
     try:
@@ -96,24 +116,25 @@ def extraer_datos_producto(item, categoria):
             return None
         nombre = limpiar_texto(nombre_elem.text)
         
-        # Precio (selector diferente en Disco)
+        # Precio (selector específico de Disco)
         precio_elem = item.find('div', class_='discoargentina-store-theme-1dCOMij_MzTzZOCohX1K7w')
         if not precio_elem:
+            # Intentar selector alternativo
+            precio_elem = item.find('span', class_='discoargentina-store-theme-1uDe_0RBpvBnVBbLBqDmN9')
+        
+        if not precio_elem:
             return None
+        
         precio = limpiar_texto(precio_elem.text)
         
-        if not precio or precio == '':
+        if not precio:
             return None
         
-        # Promo
         promo = extraer_promocion(item)
-        
-        # URL imagen
         imagen_url = extraer_imagen_url(item)
         
         return (nombre, precio, promo, imagen_url)
-        
-    except Exception as e:
+    except:
         return None
 
 def procesar_pagina(page, categoria, num_pagina, url_base):
@@ -124,15 +145,15 @@ def procesar_pagina(page, categoria, num_pagina, url_base):
         page.goto(url, wait_until='domcontentloaded', timeout=60000)
         page.wait_for_selector('article', timeout=20000)
         
-        # Scroll progresivo (importante para Disco)
+        # Scroll progresivo
         for i in range(5):
             page.evaluate(f"window.scrollBy(0, {i * 500})")
             page.wait_for_timeout(500)
         
         html = page.content()
         soup = BeautifulSoup(html, 'html.parser')
-        
         items = soup.find_all('article')
+        
         if not items:
             return 0
         
@@ -145,14 +166,13 @@ def procesar_pagina(page, categoria, num_pagina, url_base):
                 productos_encontrados += 1
         
         return productos_encontrados
-        
     except Exception as e:
-        print(f"🔥 Error en página {num_pagina}: {e}")
+        print(f"🔥 Error: {e}")
         return -1
 
 def scrapear_seccion(browser, categoria, url_base, max_paginas=None):
     print(f"\n{'='*60}")
-    print(f"🛍️ Scrapeando: {categoria.upper()}")
+    print(f"🛍️ {categoria.upper()}")
     print(f"{'='*60}\n")
     
     page = browser.new_page()
@@ -164,22 +184,24 @@ def scrapear_seccion(browser, categoria, url_base, max_paginas=None):
             break
         
         productos = procesar_pagina(page, categoria, num_pagina, url_base)
-        
-        if productos == 0 or productos == -1:
+        if productos <= 0:
             break
         
         total_productos += productos
         num_pagina += 1
     
     page.close()
-    print(f"✅ Total: {total_productos} productos\n")
+    print(f"✅ Total: {total_productos}\n")
     return total_productos
 
 def run(secciones=None, max_paginas_por_seccion=None):
     if secciones is None:
         secciones = list(SECCIONES.keys())
     
-    print(f"🎯 Secciones: {', '.join(secciones)}\n")
+    print(f"\n{'='*60}")
+    print(f"🛍️ DISCO - Scraping")
+    print(f"Secciones: {len(secciones)}")
+    print(f"{'='*60}\n")
     
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
@@ -187,19 +209,21 @@ def run(secciones=None, max_paginas_por_seccion=None):
         page = context.new_page()
         page.close()
         
-        total_general = 0
+        total = 0
         for seccion in secciones:
-            url = SECCIONES[seccion]
-            total = scrapear_seccion(browser, seccion, url, max_paginas_por_seccion)
-            total_general += total
+            if seccion in SECCIONES:
+                total += scrapear_seccion(browser, seccion, SECCIONES[seccion], max_paginas_por_seccion)
+            else:
+                print(f"⚠️  Sección '{seccion}' no existe")
         
         browser.close()
     
     print(f"\n{'='*60}")
-    print(f"🎉 SCRAPING COMPLETO")
-    print(f"✅ Total: {total_general} productos")
-    print(f"{'='*60}")
+    print(f"🎉 DISCO - Total: {total} productos")
+    print(f"{'='*60}\n")
+    
+    return total
 
 if __name__ == "__main__":
-
+    # Para producción completa
     run()
